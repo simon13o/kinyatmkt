@@ -1,0 +1,285 @@
+import streamlit as st
+import pandas as pd
+import time # 用于模拟上传延迟
+
+# --- 页面配置 (Page Configuration) ---
+# Streamlit does not use Tailwind but allows for custom HTML/CSS if needed.
+st.set_page_config(
+    page_title="MarketSight: OEM/ODM 商业情报平台",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# --- 模拟数据 (Mock Data Setup) ---
+
+# 1. 销售数据模拟 (OEM/ODM/JDM)
+sales_data_df = pd.DataFrame([
+    {'Month': 'Jan', 'Revenue': 450, 'Inquiries': 24, 'Conversion': 12},
+    {'Month': 'Feb', 'Revenue': 520, 'Inquiries': 28, 'Conversion': 14},
+    {'Month': 'Mar', 'Revenue': 480, 'Inquiries': 35, 'Conversion': 11},
+    {'Month': 'Apr', 'Revenue': 610, 'Inquiries': 42, 'Conversion': 18},
+    {'Month': 'May', 'Revenue': 550, 'Inquiries': 38, 'Conversion': 15},
+    {'Month': 'Jun', 'Revenue': 720, 'Inquiries': 50, 'Conversion': 22},
+])
+
+# 2. 产品品类兴趣分布 (用于饼图)
+category_data_df = pd.DataFrame([
+    {'Category': 'Bottle Washers', 'Value': 35},
+    {'Category': 'Sterilizers', 'Value': 25},
+    {'Category': 'Formula Makers', 'Value': 20},
+    {'Category': 'Kitchen Apps', 'Value': 20},
+])
+
+# 3. 报告库模拟 (PDFs)
+reports_df = pd.DataFrame([
+    {'Title': '2024 母婴电子产品趋势报告', 'Type': 'Market Research', 'Date': '2023-10-15', 'Tags': 'Bottle Washer, UV Sterilizer', 'Summary': '便携式与智能化成为欧美市场核心增长点。'},
+    {'Title': '北美厨房小家电竞争格局分析', 'Type': 'Competitor Analysis', 'Date': '2023-11-02', 'Tags': 'Kitchen, OEM', 'Summary': '头部品牌正在寻找具有IoT功能的代工厂。'},
+    {'Title': 'Q3 搜索流量关键词分析 (SEO)', 'Type': 'Marketing', 'Date': '2023-11-20', 'Tags': 'SEO, SEM', 'Summary': '"Portable Formula Maker" 搜索量环比增长 45%。'},
+    {'Title': '欧洲 JDM 合作机会调研', 'Type': 'Strategy', 'Date': '2023-12-01', 'Tags': 'JDM, Europe', 'Summary': '德国与法国的中端品牌存在供应链替代需求。'},
+])
+
+# 4. 展会数据模拟
+events_df = pd.DataFrame([
+    {'Name': 'CES 2024', 'Location': 'Las Vegas, USA', 'Date': '2024-01-09', 'Status': 'High Priority', 'Focus': 'Smart Home & Baby Tech', 'Leads Target': 50},
+    {'Name': 'Ambiente', 'Location': 'Frankfurt, Germany', 'Date': '2024-02-26', 'Status': 'Planned', 'Focus': 'Kitchen Lifestyle', 'Leads Target': 30},
+    {'Name': 'CBME China', 'Location': 'Shanghai', 'Date': '2024-07-14', 'Status': 'Reviewing', 'Focus': 'Maternal & Child', 'Leads Target': 80},
+    {'Name': 'IFA Berlin', 'Location': 'Berlin', 'Date': '2024-09-06', 'Status': 'Upcoming', 'Focus': 'Consumer Electronics', 'Leads Target': 60},
+])
+
+# --- 侧边栏 (Sidebar Navigation) ---
+
+st.sidebar.title("📈 MarketSight")
+st.sidebar.markdown("---")
+st.sidebar.subheader("OEM/ODM 商业情报平台")
+
+# 导航选择
+app_mode = st.sidebar.radio(
+    "导航",
+    ("数据总览 (Dashboard)", "调研报告库 (Reports)", "销售分析 (Sales)", "展会雷达 (Events)")
+)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("**用户:** Business Analyst")
+
+
+# --- 1. 数据总览 (Dashboard View) ---
+if app_mode == "数据总览 (Dashboard)":
+    st.title("📊 数据总览 - 本周市场动态")
+    st.markdown("这是本周的市场动态概览，帮助管理层快速了解关键绩效指标。")
+    st.markdown("---")
+
+    # KPI Metrics
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            label="OEM 潜在询盘 (YTD)",
+            value="217",
+            delta="12.5% 较上月",
+            delta_color="normal"
+        )
+    with col2:
+        st.metric(
+            label="已归档调研报告",
+            value=len(reports_df),
+            delta="本月新增 2 份",
+            delta_color="off"
+        )
+    with col3:
+        st.metric(
+            label="即将参加展会",
+            value=len(events_df),
+            help="下一站: CES 2024",
+            delta_color="off"
+        )
+
+    st.markdown("## 📈 询盘与营收趋势")
+    st.line_chart(
+        sales_data_df, 
+        x='Month', 
+        y=['Revenue', 'Inquiries'],
+        height=350,
+        color={
+            'Revenue': '#3b82f6', # 蓝色
+            'Inquiries': '#10b981' # 绿色
+        }
+    )
+
+    st.markdown("## 🥧 产品品类兴趣分布 (基于 SEM)")
+    # Streamlit built-in pie chart
+    st.altair_chart(
+        st.session_state.get('category_chart', None),
+        use_container_width=True
+    )
+    # Using Plotly for better pie chart control (optional, but good for portfolio)
+    # import plotly.express as px
+    # fig = px.pie(category_data_df, values='Value', names='Category', title='产品品类兴趣分布')
+    # st.plotly_chart(fig, use_container_width=True)
+
+# --- 2. 调研报告库 (Reports View) ---
+elif app_mode == "调研报告库 (Reports)":
+    st.title("📂 市场调研报告库")
+    st.markdown("集中管理所有 PDF 行业分析文档。")
+    st.markdown("---")
+
+    # 初始化状态用于报告上传
+    if 'reports_df' not in st.session_state:
+        st.session_state.reports_df = reports_df.copy()
+    
+    # 文件上传区域
+    st.subheader("📁 上传新报告")
+    uploaded_file = st.file_uploader(
+        "选择 PDF 文件上传", 
+        type=['pdf'], 
+        accept_multiple_files=False, 
+        help="仅支持 PDF 格式的市场调研报告。"
+    )
+
+    if uploaded_file is not None:
+        if st.button("🚀 确认上传并处理"):
+            with st.spinner(f'正在上传并分析报告 "{uploaded_file.name}"，请稍候...'):
+                time.sleep(2) # 模拟网络延迟和后台处理
+            
+            # 模拟文件处理成功，并添加到报告列表中
+            new_report = {
+                'Title': uploaded_file.name.replace('.pdf', ''),
+                'Type': 'New Submission',
+                'Date': time.strftime("%Y-%m-%d"),
+                'Tags': 'New, Uncategorized',
+                'Summary': '新上传的报告，等待商业分析员摘要。'
+            }
+            # 更新 session state 中的 DataFrame
+            new_reports_df = pd.DataFrame([new_report])
+            st.session_state.reports_df = pd.concat([new_reports_df, st.session_state.reports_df], ignore_index=True)
+            
+            st.success(f"✅ 报告 \"{uploaded_file.name}\" 上传成功，已添加到报告库顶部。")
+
+    st.markdown("---")
+    st.subheader("📚 报告列表")
+    
+    # 搜索和筛选
+    search_query = st.text_input("搜索关键词或标签:", "")
+    
+    # 筛选报告
+    if search_query:
+        filtered_df = st.session_state.reports_df[
+            st.session_state.reports_df.apply(lambda row: search_query.lower() in str(row).lower(), axis=1)
+        ]
+    else:
+        filtered_df = st.session_state.reports_df
+
+    # 显示报告列表
+    for index, row in filtered_df.iterrows():
+        col_title, col_summary, col_date = st.columns([3, 5, 2])
+        
+        with col_title:
+            st.markdown(f"**{row['Title']}**")
+            st.markdown(f"<span style='color: #3b82f6; font-size: 12px;'>{row['Type']}</span>", unsafe_allow_html=True)
+        
+        with col_summary:
+            st.markdown(f"<span style='color: #64748b; font-size: 14px;'>{row['Summary']}</span>", unsafe_allow_html=True)
+            st.markdown(f"<span style='color: #a1a1aa; font-size: 10px;'>标签: {row['Tags']}</span>", unsafe_allow_html=True)
+            
+        with col_date:
+            st.markdown(f"<div style='text-align: right;'>{row['Date']}</div>", unsafe_allow_html=True)
+            st.download_button(
+                label="⬇️ 下载 PDF",
+                data="模拟下载内容，真实项目中需连接云存储。",
+                file_name=f"{row['Title']}.pdf",
+                mime="application/pdf"
+            )
+        st.markdown("---")
+
+# --- 3. 销售分析 (Sales View) ---
+elif app_mode == "销售分析 (Sales)":
+    st.title("💸 销售数据深度分析")
+    st.markdown("将 Excel 销售数据转化为直观图表，辅助 BD 团队制定策略。")
+    st.markdown("---")
+
+    # 模拟导入 Excel 数据的区域
+    st.subheader("⚙️ 销售数据导入状态")
+    st.info("数据已从模拟的 Excel 文件自动加载。在实际项目中，此区域可添加 Excel 文件上传功能。")
+
+    # 询盘/转化率表格 (Summary Table)
+    st.subheader("📊 询盘与转化率汇总")
+    st.dataframe(
+        sales_data_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # 详细图表：转化率与营收
+    st.subheader("📈 转化率与营收趋势对比")
+    
+    col_chart1, col_chart2 = st.columns(2)
+    
+    with col_chart1:
+        st.markdown("**月度营收 (k$)**")
+        st.bar_chart(sales_data_df, x='Month', y='Revenue', color='#3b82f6')
+        
+    with col_chart2:
+        st.markdown("**月度转化率 (%)**")
+        st.area_chart(sales_data_df, x='Month', y='Conversion', color='#10b981')
+
+# --- 4. 展会雷达 (Events View) ---
+elif app_mode == "展会雷达 (Events)":
+    st.title("🗺️ 全球展会与机会雷达")
+    st.markdown("追踪参展计划，快速识别潜在 JDM 合作伙伴机会。")
+    st.markdown("---")
+
+    st.subheader("🗓️ 即将到来的重要展会")
+    
+    # 展会列表
+    st.dataframe(
+        events_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Status": st.column_config.BadgeColumn(
+                "状态",
+                help="展会准备状态",
+                width="small",
+                # Mapping colours for visual clarity
+                default_color="gray",
+                options={
+                    "High Priority": "red",
+                    "Planned": "blue",
+                    "Reviewing": "yellow",
+                    "Upcoming": "green",
+                }
+            ),
+             "Leads Target": st.column_config.ProgressColumn(
+                 "线索目标进度",
+                 help="线索目标进度 (模拟值)",
+                 format="%f",
+                 min_value=0,
+                 max_value=100,
+             )
+        }
+    )
+
+    st.markdown("---")
+    st.subheader("💡 展会策略洞察")
+    
+    st.error("""
+    **CES 2024 (拉斯维加斯):**
+    重点推广 **母婴电子产品** 中的智能化功能（Wi-Fi 连接，App 控制），以吸引北美高科技母婴品牌进行 **JDM 合作**。
+    """)
+
+    st.warning("""
+    **Ambiente (法兰克福):**
+    欧洲市场对 **厨房家电** 的品质要求高，建议突出 **ODM** 方案中的耐用性和能耗效率，以满足欧洲的环保法规。
+    """)
+
+# --- Initializing chart data in session state for Streamlit (for best practice) ---
+if 'category_chart' not in st.session_state:
+    import plotly.express as px
+    st.session_state.category_chart = px.pie(
+        category_data_df, 
+        values='Value', 
+        names='Category', 
+        title='产品品类兴趣分布',
+        color_discrete_sequence=['#3b82f6', '#10b981', '#f59e0b', '#6366f1']
+    )
+    st.session_state.category_chart.update_layout(showlegend=True)
